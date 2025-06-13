@@ -1,3 +1,4 @@
+# rss_crawler.py
 import feedparser
 import requests
 from bs4 import BeautifulSoup
@@ -8,19 +9,22 @@ import hashlib
 import os
 import json
 
-# 환경 변수에서 Firebase 키 로드
+print("📦 시작: Firebase 및 라이브러리 설정")
+
+# Firebase 초기화
 with open("serviceAccountKey.json") as f:
     cred_dict = json.load(f)
 
 cred = credentials.Certificate(cred_dict)
 firebase_admin.initialize_app(cred, {
-    'storageBucket': os.environ['FIREBASE_STORAGE_BUCKET']
+    'storageBucket': os.environ.get('FIREBASE_STORAGE_BUCKET')
 })
 
 db = firestore.client()
 bucket = storage.bucket()
 
 def extract_article_data(url):
+    print(f"🌐 기사 가져오기: {url}")
     res = requests.get(url, timeout=5)
     soup = BeautifulSoup(res.content, 'html.parser')
     content_el = soup.select_one('.art_body')
@@ -30,6 +34,7 @@ def extract_article_data(url):
     return content, img_url
 
 def upload_image(img_url):
+    print(f"🖼 이미지 업로드: {img_url}")
     res = requests.get(img_url)
     filename = hashlib.md5(img_url.encode()).hexdigest() + '.jpg'
     blob = bucket.blob(f'news_thumbnails/{filename}')
@@ -38,6 +43,7 @@ def upload_image(img_url):
     return blob.public_url
 
 def upload_to_firestore(title, link, content, image_url, published):
+    print(f"📝 Firestore 저장: {title}")
     doc_ref = db.collection('news').document()
     doc_ref.set({
         'title': title,
@@ -49,18 +55,21 @@ def upload_to_firestore(title, link, content, image_url, published):
     })
 
 def main():
+    print("🚀 RSS 크롤링 시작")
     feed = feedparser.parse("https://sports.khan.co.kr/rss")
-    for entry in feed.entries[:5]:  # 최근 5개만
-        try:
-            title = entry.title
-            link = entry.link
-            published = entry.published
-            content, img_url = extract_article_data(link)
-            image_url = upload_image(img_url) if img_url else ""
-            upload_to_firestore(title, link, content, image_url, published)
-        except Exception as e:
-            print(f"Error processing {entry.link}: {e}")
+    print(f"✔️ 기사 개수: {len(feed.entries)}")
 
+    for entry in feed.entries[:5]:
+        try:
+            print(f"📄 기사 처리: {entry.title}")
+            content, img_url = extract_article_data(entry.link)
+            image_url = upload_image(img_url) if img_url else ""
+            upload_to_firestore(entry.title, entry.link, content, image_url, entry.published)
+            print(f"✅ 완료: {entry.title}")
+        except Exception as e:
+            print(f"❌ 오류 발생: {e}")
+
+# 🔥 중요: 이 부분이 없으면 GitHub Actions에서 실행되지 않음
 if __name__ == "__main__":
-    print("rss_crawler.py 실행 시작")
+    print("🔥 rss_crawler.py 실행 시작")
     main()
