@@ -62,4 +62,5 @@ def main():
             print(f"Error processing {entry.link}: {e}")
 
 if __name__ == "__main__":
+    print("rss_crawler.py 실행 시작")
     main()
