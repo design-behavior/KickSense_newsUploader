@@ -77,12 +77,23 @@ def main():
 
     print(f"📊 총 기사 수: {len(all_entries)}")
 
-    for entry in all_entries[:10]:  # 10개까지만 테스트
+    for entry in all_entries[:10]:  # 테스트용으로 10개 제한
         try:
             print(f"▶️ 기사 처리: {entry.title}")
             content, img_url = extract_article_data(entry.link)
             image_url = upload_image(img_url) if img_url else ""
-            upload_to_firestore(entry.title, entry.link, content, image_url, entry.published)
+
+            published = getattr(entry, 'published', '')  # ← 핵심 수정 포인트
+
+            upload_to_firestore(
+                entry.title,
+                entry.link,
+                content,
+                image_url,
+                published
+            )
+            print(f"✅ 저장 완료: {entry.title}")
+
         except Exception as e:
             print(f"❌ 오류: {entry.link} → {e}")
 
