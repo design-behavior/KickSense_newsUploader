@@ -8,9 +8,9 @@ import hashlib
 import os
 import json
 
-print("📦 시작: Firebase 및 라이브러리 설정")
+print("📦 Firebase 초기화 시작")
 
-# Firebase 초기화
+# ✅ 서비스 계정 키 로드
 with open("serviceAccountKey.json") as f:
     cred_dict = json.load(f)
 
@@ -51,8 +51,14 @@ def upload_image(img_url):
     blob.make_public()
     return blob.public_url
 
-def upload_to_firestore(title, link, content, image_url, published):
-    print(f"✅ Firestore 저장: {title}")
+def upload_to_firestore(title, link, content, image_url, published, category):
+    print(f"✅ Firestore 저장 시도: {title} [{category}]")
+    # 중복 확인
+    existing = db.collection('news').where('url', '==', link).get()
+    if existing:
+        print(f"⚠️ 이미 저장된 기사: {link}")
+        return  # 이미 존재하면 건너뜀
+        
     doc_ref = db.collection('news').document()
     doc_ref.set({
         'title': title,
@@ -60,44 +66,39 @@ def upload_to_firestore(title, link, content, image_url, published):
         'content': content,
         'thumbnail': image_url,
         'published': published,
+        'category': category,         # ✅ 필수: 국내/해외 구분 필드!
         'createdAt': datetime.utcnow()
     })
 
 def main():
-    rss_urls = [
-        "https://sports.khan.co.kr/rss/soccer_korea-soccer",
-        "https://sports.khan.co.kr/rss/soccer_world-soccer"
+    rss_sources = [
+        ("https://sports.khan.co.kr/rss/soccer_korea-soccer", "domestic"),
+        ("https://sports.khan.co.kr/rss/soccer_world-soccer", "international")
     ]
 
-    all_entries = []
-    for url in rss_urls:
-        entries = parse_feed(url)
-        print(f"📌 {url} 에서 {len(entries)}개 기사 수집됨")
-        all_entries.extend(entries)
+    for rss_url, category in rss_sources:
+        entries = parse_feed(rss_url)
+        print(f"📌 {rss_url} 에서 {len(entries)}개 기사 수집됨 [{category}]")
 
-    print(f"📊 총 기사 수: {len(all_entries)}")
+        for entry in entries[:18]:  # 필요시 전체 처리
+            try:
+                print(f"▶️ 기사 처리: {entry.title}")
+                content, img_url = extract_article_data(entry.link)
+                image_url = upload_image(img_url) if img_url else ""
+                published = getattr(entry, 'published', '')
 
-    for entry in all_entries[:10]:  # 테스트용으로 10개 제한
-        try:
-            print(f"▶️ 기사 처리: {entry.title}")
-            content, img_url = extract_article_data(entry.link)
-            image_url = upload_image(img_url) if img_url else ""
+                upload_to_firestore(
+                    entry.title,
+                    entry.link,
+                    content,
+                    image_url,
+                    published,
+                    category    # ✅ 추가
+                )
 
-            published = getattr(entry, 'published', '')  # ← 핵심 수정 포인트
+            except Exception as e:
+                print(f"❌ 오류: {entry.link} → {e}")
 
-            upload_to_firestore(
-                entry.title,
-                entry.link,
-                content,
-                image_url,
-                published
-            )
-            print(f"✅ 저장 완료: {entry.title}")
-
-        except Exception as e:
-            print(f"❌ 오류: {entry.link} → {e}")
-
-# 실행 진입점
 if __name__ == "__main__":
     print("🔥 rss_crawler.py 실행 시작")
     main()
