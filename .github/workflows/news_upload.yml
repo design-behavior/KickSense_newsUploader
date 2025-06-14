@@ -28,5 +28,21 @@ jobs:
 
       - name: Run crawler
         env:
-          FIREBASE_STORAGE_BUCKET: kicksense-19c1d.firebasestorage.app
+          FIREBASE_STORAGE_BUCKET: kicksense-19c1d.appspot.com  # 수정
         run: python rss_crawler.py
+
+      - name: Slack notification (success)
+        if: success()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        with:
+          args: "Firebase 뉴스 크롤링 성공"
+
+      - name: Slack notification (failure)
+        if: failure()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        with:
+          args: "Firebase 뉴스 크롤링 실패, 확인 필요!"
