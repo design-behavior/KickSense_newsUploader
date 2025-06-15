@@ -10,7 +10,7 @@ import json
 
 print("📦 Firebase 초기화 시작")
 
-# ✅ 서비스 계정 키 로드
+# 서비스 계정 키 로드
 with open("serviceAccountKey.json") as f:
     cred_dict = json.load(f)
 
@@ -27,7 +27,7 @@ headers = {
 }
 
 def parse_feed(url):
-    print(f"🌐 RSS 요청 중: {url}")
+    print(f"RSS 요청 중: {url}")
     res = requests.get(url, headers=headers, timeout=5)
     feed = feedparser.parse(res.content)
     return feed.entries
@@ -52,11 +52,11 @@ def upload_image(img_url):
     return blob.public_url
 
 def upload_to_firestore(title, link, content, image_url, published, category):
-    print(f"✅ Firestore 저장 시도: {title} [{category}]")
+    print(f"Firestore 저장 시도: {title} [{category}]")
     # 중복 확인
     existing = db.collection('news').where('url', '==', link).get()
     if existing:
-        print(f"⚠️ 이미 저장된 기사: {link}")
+        print(f"이미 저장된 기사: {link}")
         return  # 이미 존재하면 건너뜀
         
     doc_ref = db.collection('news').document()
@@ -66,7 +66,7 @@ def upload_to_firestore(title, link, content, image_url, published, category):
         'content': content,
         'thumbnail': image_url,
         'published': published,
-        'category': category,         # ✅ 필수: 국내/해외 구분 필드!
+        'category': category,         # 필수: 국내/해외 구분 필드
         'createdAt': datetime.utcnow()
     })
 
@@ -82,7 +82,7 @@ def main():
 
         for entry in entries[:18]:  # 필요시 전체 처리
             try:
-                print(f"▶️ 기사 처리: {entry.title}")
+                print(f"기사 처리: {entry.title}")
                 content, img_url = extract_article_data(entry.link)
                 image_url = upload_image(img_url) if img_url else ""
                 published = getattr(entry, 'published', '')
@@ -93,12 +93,12 @@ def main():
                     content,
                     image_url,
                     published,
-                    category    # ✅ 추가
+                    category    # 추가
                 )
 
             except Exception as e:
-                print(f"❌ 오류: {entry.link} → {e}")
+                print(f"오류: {entry.link} → {e}")
 
 if __name__ == "__main__":
-    print("🔥 rss_crawler.py 실행 시작")
+    print("rss_crawler.py 실행 시작")
     main()
