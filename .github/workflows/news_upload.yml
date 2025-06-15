@@ -2,7 +2,7 @@ name: Upload News to Firebase
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # 매일 00:00 UTC 실행
+    - cron: '0 0 * * *'  # 매일 00:00 UTC 실행 (한국 시간 09:00)
   workflow_dispatch:     # 수동 실행도 가능
 
 jobs:
@@ -19,7 +19,9 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Decrypt serviceAccountKey
         env:
@@ -28,7 +30,7 @@ jobs:
 
       - name: Run crawler
         env:
-          FIREBASE_STORAGE_BUCKET: kicksense-19c1d.appspot.com  # 수정
+          FIREBASE_STORAGE_BUCKET: kicksense-19c1d.appspot.com  # ✅ 올바른 버킷 주소
         run: python rss_crawler.py
 
       - name: Slack notification (success)
@@ -37,7 +39,7 @@ jobs:
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         with:
-          args: "Firebase 뉴스 크롤링 성공"
+          text: "✅ Firebase 뉴스 크롤링 성공 🎉"
 
       - name: Slack notification (failure)
         if: failure()
@@ -45,4 +47,4 @@ jobs:
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         with:
-          args: "Firebase 뉴스 크롤링 실패, 확인 필요!"
+          text: "❌ Firebase 뉴스 크롤링 실패 ⚠️ 확인 필요!"
